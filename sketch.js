@@ -2,12 +2,12 @@ let song;
 let fft;
 let amplitude;
 let button;
-let waveHeight = 12; // 波浪高度
+let drops = []; // 存储雨滴对象的数组
 
 function setup() {
   createCanvas(400, 400);
   // 加载音频文件
-  song = loadSound('时の回廊.mp3', loaded);
+  song = loadSound('Ku, Land of the Scarlet Sunset.mp3', loaded);
   song.setVolume(0.6);
   fft = new p5.FFT(0.8, 1024); // FFT设置
   amplitude = new p5.Amplitude(); // 用于检测音量
@@ -39,46 +39,43 @@ function togglePlay() {
 function draw() {
   background(255);
 
-
-  let yOffset = waveHeight * sin(TWO_PI * frameCount * 0.004); // 计算波浪的高度偏移
-
+  // 获取音量信息
+  let vol = amplitude.getLevel(); 
+  // 获取频谱信息
+  let spectrum = fft.analyze();
 
   // 绘制顶部区域
   fill('#AB8089');
   rect(0, 0, width, height);
 
-  // 绘制中间区域
-  fill('#535774'); // 颜色2
-  // 这里的波浪可以与底部区域的效果相似，可以选择不同的绘制方式
-  beginShape();
-  for (let x = 0; x <= width; x += 10) {
-    let y = yOffset + waveHeight * sin(x * 0.05 + frameCount * 0.02) + height*4/7;
-    vertex(x, y);
+  // 检测高频部分（假设使用频谱数组的后1/4作为高频区间）
+  let highFreq = spectrum.slice(spectrum.length * 0.15);
+  let highAvg = highFreq.reduce((a, b) => a + b) / highFreq.length;
+  // 当高频平均值超过阈值时生成雨滴
+  if (highAvg > 0.9) { // 阈值可以调整
+    for (let i = 0; i < 3; i++) { // 每次生成3滴
+      drops.push({
+        x: random(width),
+        y: 0,
+        speed: random(1, 4)
+      });
+    }
   }
-  vertex(width, height);
-  vertex(0, height);
-  endShape(CLOSE);
-
-  // 绘制底部区域
-  fill('#262835'); // 颜色1
-  // 绘制波浪边界
-  beginShape();
-  for (let x = 0; x <= width; x += 10) {
-    let y = yOffset + waveHeight * sin(x * 0.05 + frameCount * 0.05) + height*6/7;
-    vertex(x, y); // 定义波浪的每个顶点
+  // 更新和绘制雨滴
+  fill('#535774');
+  noStroke();
+  for (let i = drops.length - 1; i >= 0; i--) {
+    let d = drops[i];
+    // 绘制雨滴（椭圆形状）
+    ellipse(d.x, d.y, 2, 10);
+    // 更新位置
+    d.y += d.speed;
+    // 移出屏幕的雨滴移除
+    if (d.y > height) {
+      drops.splice(i, 1);
+    }
   }
-  vertex(width, height);
-  vertex(0, height);
-  endShape(CLOSE);
 
-
-
-
-
-  // 获取音量信息
-  let vol = amplitude.getLevel();
-  // 获取频谱信息
-  let spectrum = fft.analyze();
 
   // 绘制节奏驱动的动画
   noStroke(); //禁用轮廓线
@@ -101,7 +98,42 @@ function draw() {
 
     let alpha = map(spectrum[i], 0, 255, 10, 255); // 透明度随频谱强度变化
     fill(253,127,89, alpha); // 设置透明度，增加视觉效果
-    ellipse(x, y, 10); // 绘制小圆点形成涟漪效果
+    ellipse(x, y, 8); // 绘制小圆点形成涟漪效果
   }
+
+
+  
+  // 调整波浪高度基于频谱平均值
+  let avgSpectrum = spectrum.reduce((a, b) => a + b) / spectrum.length;
+  let dynamicWaveHeight = map(avgSpectrum, 0, 255, 12, 50); // 动态波浪高度
+
+
+
+
+  // 绘制中间区域
+  fill('#535774'); // 颜色2
+  // 这里的波浪可以与底部区域的效果相似，可以选择不同的绘制方式
+  beginShape();
+  for (let x = 0; x <= width; x += 10) {
+    let y = dynamicWaveHeight * sin(x * 0.05 + frameCount * 0.02) + height * 7 / 11;
+    vertex(x, y);
+  }
+  vertex(width, height);
+  vertex(0, height);
+  endShape(CLOSE);
+
+  // 绘制底部区域
+  fill('#262835'); // 颜色1
+  // 绘制波浪边界
+  beginShape();
+  for (let x = 0; x <= width; x += 10) {
+    let y = dynamicWaveHeight * sin(x * 0.05 + frameCount * 0.05) + height * 9 / 11;
+    vertex(x, y); // 定义波浪的每个顶点
+  }
+  vertex(width, height);
+  vertex(0, height);
+  endShape(CLOSE);
+
+
 
 }
